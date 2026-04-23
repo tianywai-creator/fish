@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>智能鱼缸喂食器</title>
+    <style>
+        body { font-family: -apple-system, sans-serif; background: #f4f6f9; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+        .container { background: white; padding: 25px; border-radius: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); width: 85%; max-width: 360px; text-align: center; }
+        
+        /* 状态指示灯 */
+        .status-container { display: flex; align-items: center; justify-content: center; margin-bottom: 20px; gap: 8px; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; background: #bbb; transition: 0.3s; }
+        .online { background: #34c759; box-shadow: 0 0 10px rgba(52, 199, 89, 0.5); }
+        .offline { background: #ff3b30; }
+
+        h2 { color: #333; margin: 0 0 10px 0; font-size: 20px; }
+        p { color: #888; font-size: 13px; margin-bottom: 25px; }
+
+        /* 按钮网格布局 */
+        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px; }
+        
+        .btn-feed { 
+            aspect-ratio: 1 / 1; /* 正方形按钮 */
+            background: #f8f9fa; border: 2px solid #eee; border-radius: 20px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            cursor: pointer; transition: 0.2s; -webkit-tap-highlight-color: transparent;
+        }
+        .btn-feed:active { transform: scale(0.92); background: #e9ecef; }
+        
+        .btn-feed .num { font-size: 24px; font-weight: bold; color: #007aff; }
+        .btn-feed .unit { font-size: 12px; color: #999; margin-top: 4px; }
+
+        /* 底部提示 */
+        .log-box { font-size: 13px; color: #007aff; height: 20px; font-weight: 500; }
+        .footer { font-size: 11px; color: #ccc; margin-top: 15px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="status-container">
+        <div id="dot" class="dot"></div>
+        <span id="status-text" style="font-size: 13px; color: #666;">连接中...</span>
+    </div>
+    
+    <h2>鱼缸喂食控制</h2>
+    <p>点击下方数字选择喂食份数</p>
+
+    <div class="grid">
+        <script>
+            for(let i=1; i<=9; i++) {
+                document.write(`
+                    <div class="btn-feed" onclick="sendFeed(${i})">
+                        <span class="num">${i}</span>
+                        <span class="unit">份</span>
+                    </div>
+                `);
+            }
+        </script>
+    </div>
+
+</div>
+
+<script>
+    // 修改为你的巴法云信息
+    const uid = "1944c79a18f345f487dde0852bd49c3b";
+    const topic = "fish006"; // 确保与你 ESP32 订阅的主题一致
+
+    // 发送喂食指令
+    function sendFeed(count) {
+        const msg = "start" + count; // 拼接指令: start1, start2 ...
+        const logDiv = document.getElementById('log');
+        
+        logDiv.innerText = "正在下发: " + count + " 份饵料...";
+
+        fetch("https://apis.bemfa.com/va/postJsonMsg", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ 
+                uid: uid, 
+                topic: topic, 
+                type: 1, 
+                msg: msg 
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            logDiv.innerText = "✅ 发送成功 (" + msg + ")";
+            setTimeout(() => { logDiv.innerText = ""; }, 3000);
+        })
+        .catch(err => {
+            logDiv.innerText = "❌ 发送失败，请重试";
+            logDiv.style.color = "#ff3b30";
+        });
+    }
+
+    // 状态检测
+    async function checkOnline() {
+        try {
+            const res = await fetch(`https://apis.bemfa.com/va/online?uid=${uid}&topic=${topic}&type=1`);
+            const data = await res.json();
+            const dot = document.getElementById('dot');
+            const text = document.getElementById('status-text');
+
+            if (data.data === true) {
+                dot.className = "dot online";
+                text.innerText = "在线";
+            } else {
+                dot.className = "dot offline";
+                text.innerText = "离线";
+            }
+        } catch (e) {
+            document.getElementById('status-text').innerText = "请求错误";
+        }
+    }
+
+    setInterval(checkOnline, 5000);
+    checkOnline();
+</script>
+
+</body>
+</html>
