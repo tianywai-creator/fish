@@ -59,7 +59,7 @@
             }
         </script>
     </div>
-
+    <div id="log" class="log-box"></div>
 </div>
 
 <script>
@@ -86,7 +86,7 @@
         })
         .then(res => res.json())
         .then(data => {
-            logDiv.innerText = "✅ 发送成功 (" + msg + ")";
+            logDiv.innerText = "✅ 发送成功: " + count + " 份饵料";
             setTimeout(() => { logDiv.innerText = ""; }, 3000);
         })
         .catch(err => {
